@@ -184,12 +184,6 @@ jobs:
           BiocManager::install("BiocGenerics")
         shell: Rscript {0}
 
-      - name: Install covr
-        if: github.ref == 'refs/heads/devel' && env.run_covr == 'true' && runner.os == 'Linux' && matrix.config.r == 'devel'
-        run: |
-          remotes::install_cran("covr")
-        shell: Rscript {0}
-
       - name: Install pkgdown and deps
         if: github.ref == 'refs/heads/devel' && env.run_pkgdown == 'true' && runner.os == 'Linux' && matrix.config.r == 'devel'
         run: |
@@ -215,7 +209,7 @@ jobs:
           _R_CHECK_CRAN_INCOMING_: false
         run: |
           rcmdcheck::rcmdcheck(
-              args = c("--ignore-vignettes", "--no-manual", "--timings", "--no-tests"),
+              args = c("--ignore-vignettes", "--no-manual", "--timings"),
               build_args = c("--no-manual", "--no-resave-data","--no-build-vignettes"),
               error_on = "warning",
               check_dir = "check"
@@ -243,12 +237,6 @@ jobs:
               `no-check-R-ver` = TRUE,
               `no-check-bioc-help` = TRUE
           )
-        shell: Rscript {0}
-
-      - name: Test coverage
-        if: github.ref == 'refs/heads/devel' && env.run_covr == 'true' && runner.os == 'Linux' && matrix.config.r == 'devel'
-        run: |
-          covr::codecov(type="all", commentDontrun=FALSE)
         shell: Rscript {0}
 
       - name: Install package
