@@ -27,7 +27,7 @@ on:
 name: R-CMD-check-bioc
 
 ## These environment variables control whether to run GHA code later on that is
-## specific to testthat, covr, and pkgdown.
+## specific to testthat and pkgdown.
 ##
 ## If you need to clear the cache of packages, update the number inside
 ## cache-version as discussed at https://github.com/r-lib/actions/issues/86.
@@ -35,7 +35,6 @@ name: R-CMD-check-bioc
 ## "/nocache" in the commit message.
 env:
   has_testthat: 'true'
-  run_covr: 'true'
   run_pkgdown: 'true'
   has_RUnit: 'false'
   cache-version: 'cache-v1'
