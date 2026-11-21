@@ -10,15 +10,20 @@ getClusters(
   method = c("leiden", "louvain"),
   resolution = 1,
   cluster_name = "cluster",
-  seed = 1,
+  unassigned = c("merge", "label", "discard"),
+  min_size = NULL,
+  start_from = 0,
+  seed = NULL,
+  verbose = FALSE,
   ...
 )
 }
 \arguments{
 \item{spe}{A SpatialExperiment object.}
 
-\item{nbrs_name}{Name of neighbour list for clustering. If NULL, will use
-the newest one in spe@metadata$nbrs$cell or create one if none are available.}
+\item{nbrs_name}{Name of neighbour list for clustering. If NULL, uses the
+most recent SNN list from \link[scider]{findNbrsSNN}, which must have been
+run first; otherwise getClusters errors.}
 
 \item{method}{Clustering methods. Options are leiden and louvain.}
 
@@ -28,7 +33,26 @@ clusters. See \link[igraph]{cluster_leiden} and \link[igraph]{cluster_louvain}}
 \item{cluster_name}{Name to store the clusters in spe's
 \link[SummarizedExperiment]{colData}}
 
-\item{seed}{seed for clustering}
+\item{unassigned}{How to handle cells in clusters with at most \code{min_size}
+cells (singletons and tiny fragments, often left isolated by SNN pruning). One
+of: "merge" (default) graph-merges each cell into its most-connected retained
+cluster; "label" leaves all such cells "unassigned"; "discard" removes them
+from the spe (changing ncol(spe)).}
+
+\item{min_size}{Maximum size for a cluster to be treated as too small (see
+unassigned). Defaults to NULL, which uses either 5 or 0.01\\% of the cells,
+whichever is smaller.}
+
+\item{start_from}{Integer at which cluster numbering starts. 0 (default)
+numbers clusters 0..K-1; set to 1 for 1..K.}
+
+\item{seed}{Integer or NULL. If NULL (default), the clustering uses the
+current random number stream, so call \code{set.seed()} beforehand for
+reproducible clusters. Otherwise the clustering uses this seed and the
+caller's random number stream is left unchanged.}
+
+\item{verbose}{Logical. Whether to report how cells in tiny clusters were
+reassigned/labelled/discarded (see unassigned). Defaults to FALSE.}
 
 \item{...}{Other clustering arguments for \link[igraph]{cluster_leiden} or
 \link[igraph]{cluster_louvain}}
@@ -42,8 +66,9 @@ A SpatialExperiment object
 Cluster cells in spe using graph methods.
 }
 \details{
-Cluster cells with igraph using SNN calculated by \link[scider]{findNbrsSNN}.
-Any neighbour list in spe@metadata$nbrs$cell can also be used
+Cluster cells with igraph using an SNN neighbour list built by
+\link[scider]{findNbrsSNN}, which must be run before getClusters. Any
+neighbour list in spe@metadata$nbrs$cell can be selected via nbrs_name.
 }
 \examples{
 
@@ -51,5 +76,6 @@ data("xenium_bc_spe")
 spe <- normalizeAssay(spe)
 spe <- runPCA(spe)
 spe <- findNbrsSNN(spe,dimred="PCA")
+set.seed(1)
 spe <- getClusters(spe, resolution=0.5)
 }

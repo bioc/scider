@@ -8,14 +8,16 @@
 #' @param group.by values to group plot by. Must be in colData of spe.
 #' @param detection.limit threshold for minimum expression value for percentage 
 #' expression calculation (dot size)
-#' @param expression.limit Upper and lower bound for average expression. Values 
-#' beyond this range are snapped to this limit. If only one value is provided, 
-#' it it taken as the upper bound.
+#' @param range Upper and lower bound for average expression. Values
+#' beyond this range are snapped to this limit. If only one value is provided,
+#' it is taken as the upper bound.
 #' @param scale Whether to scale the average expression data of each feature
 #' using \link[base]{scale}.
-#' @param cols Custom color palette.
+#' @param cols Custom colour palette (a vector of colours defining the fill
+#' gradient). Default NULL uses a light-grey (low) to dark-red (high) gradient.
 #' @param dot.scale scale the radius of the plot. See \link[ggplot2]{scale_radius}
 #' @param flip.axes Whether to flip the axes.
+#' @return A ggplot object.
 #' @export
 #' @examples
 #'
@@ -26,7 +28,7 @@ plotDots <- function(spe,
                      assay = "counts",
                      group.by = "cell_type",
                      detection.limit = 0, # Dot size
-                     expression.limit = c(-Inf,Inf), # Dot colour
+                     range = c(-Inf,Inf), # Dot colour
                      scale = TRUE,
                      cols = NULL,
                      dot.scale = 6,
@@ -48,10 +50,11 @@ plotDots <- function(spe,
   group <- as.factor(group)
   
   # Calculate mean & percentage expression of each group.
+  avg <- if (identical(assay, "logcounts")) function(x) log1p(mean(expm1(x))) else mean
   dat <- stats::aggregate.data.frame(as.matrix(Matrix::t(exprs)), list(group),
                                      FUN=function(x){
                                        n=length(x)
-                                       mean = log1p(mean(expm1(x)))
+                                       mean = avg(x)
                                        percentage = sum(x>detection.limit)/n
                                        matrix(c(mean, percentage),
                                               ncol=2)})
@@ -62,27 +65,31 @@ plotDots <- function(spe,
   }
   
   # Convert to long
-  dat <- data.frame(rep(dat[[1]], ncol(dat)-1),
-                    rep(colnames(dat)[-1], each = nrow(dat)),
-                    do.call(rbind,dat[,-1]))
+  dat <- data.frame(rep(dat[[1]], ncol(dat)-1), # Group
+                    rep(colnames(dat)[-1], each = nrow(dat)), # Feature
+                    do.call(rbind,dat[,-1,drop=FALSE])) # Summary stats
   colnames(dat) = c(group.by,"feature","average","percentage")
   
   # Threshold average expression
-  if (length(expression.limit)==1) {expression.limit = c(-Inf,expression.limit)}
-  dat$average[dat$average<expression.limit[1]] <- expression.limit[1]
-  dat$average[dat$average>expression.limit[2]] <- expression.limit[2]
+  if (length(range)==1) {range = c(-Inf,range)}
+  dat$average[dat$average<range[1]] <- range[1]
+  dat$average[dat$average>range[2]] <- range[2]
   
   # Convert to factor to keep the specified order when plotted
   dat$feature <- factor(dat$feature,levels = feature)
   
   # Plotting
-  p <- ggplot(data=dat) + 
-    geom_point(aes(.data[[group.by]],feature,size=.data[["percentage"]],color=.data[["average"]])) +
-    theme_minimal() + 
-    theme(axis.text.x=element_text(angle=-45,hjust=0)) +
+  p <- ggplot(data=dat) +
+    geom_point(aes(.data[[group.by]],feature,size=.data[["percentage"]],fill=.data[["average"]]),
+               shape=21, colour="black", stroke=0.3) +
+    theme_minimal() +
+    theme(axis.line=element_line(colour="black"),
+          axis.text.x=element_text(angle=45,hjust=1)) +
     scale_radius(range=c(0,dot.scale))
-  if (!is.null(cols)) {
-    p <- p + scale_color_gradientn(colours=cols)
+  if (is.null(cols)) {
+    p <- p + scale_fill_gradient(low="lightgrey", high="darkred")
+  } else {
+    p <- p + scale_fill_gradientn(colours=cols)
   }
   if (flip.axes) {
     p <- p + coord_flip()

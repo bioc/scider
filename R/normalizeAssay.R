@@ -13,16 +13,25 @@
 #' spe <- normalizeAssay(spe)
 normalizeAssay <- function(spe,
                            transformation = c("log"),
-                           scale.factor = 1e4,
+                           scale.factor = 1e2,
                            assay = "counts",
                            name = "logcounts") {
-  assay <- SummarizedExperiment::assay(spe,assay)
-  library_size <- scale.factor/Matrix::colSums(assay)
-  assay <- Matrix::colScale(assay,library_size)
+  mat <- SummarizedExperiment::assay(spe, assay)
+  dn <- dimnames(mat)
+  library_size <- scale.factor / Matrix::colSums(mat)
+  # Multiply each column by its per-cell scaling factor.
+  # Using %*% Diagonal keeps the result as a sparse dgCMatrix and avoids
+  # Matrix::colScale, which was removed in Matrix >= 1.6 and returned a dense
+  # dgeMatrix in earlier versions (causing a 'Dimnames' S4 slot error on
+  # downstream assay assignment).
+  # dimnames must be restored afterwards because %*% drops them.
+  mat <- mat %*% Matrix::Diagonal(x = library_size)
+  mat <- methods::as(mat, "dgCMatrix")
+  dimnames(mat) <- dn
   switch(match.arg(transformation),
          log = {
-           assay <- log1p(assay)
+           mat <- log1p(mat)
          })
-  SummarizedExperiment::assay(spe,name) <- assay
+  SummarizedExperiment::assay(spe, name) <- mat
   return(spe)
 }

@@ -10,15 +10,16 @@
 #' 
 #' @details
 #' Default is to generate sf polygons for all grid.
-#' For plotting with geom_sf, use sf::st_as_sfc(grid2sf(spe)) to convert list 
+#' For plotting with geom_sf, use sf::st_as_sfc(grid2sf(spe)) to convert list
 #' into Geometry Set.
+#' @export
 grid2sf <- function(spe,
                     x=spe@metadata$grid_density$node_x,
                     y=spe@metadata$grid_density$node_y,
                     reverseY = FALSE) {
   if (is.null(spe@metadata$grid_info)) stop("Missing grid. Compute Density first")
   if (is.null(x) || is.null(y)) stop("Missing x or y")
-  if (length(x) != length(x)) stop("x, y must be of equal length")
+  if (length(x) != length(y)) stop("x, y must be of equal length")
   
   x <- as.numeric(x)
   y <- as.numeric(y)
@@ -85,8 +86,9 @@ grid2sf <- function(spe,
 #' @details
 #' Basically grid2sf() but returns a data.frame for plotting with geom_polygon(),
 #' which allows for scale_*_transform(), unlike geom_sf().
-#' 
+#'
 #' Column names are kept similar to sf::st_coordinates
+#' @export
 grid2df <- function(spe,
                     x=spe@metadata$grid_density$node_x,
                     y=spe@metadata$grid_density$node_y,
@@ -94,7 +96,7 @@ grid2df <- function(spe,
                     ...) {
   if (is.null(spe@metadata$grid_info)) stop("Missing grid. Compute Density first")
   if (is.null(x) || is.null(y)) stop("Missing x or y")
-  if (length(x) != length(x)) stop("x, y must be of equal length")
+  if (length(x) != length(y)) stop("x, y must be of equal length")
   
   x <- as.numeric(x)
   y <- as.numeric(y)

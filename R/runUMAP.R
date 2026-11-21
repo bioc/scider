@@ -1,7 +1,7 @@
 #' UMAP using uwot. Parameters are set to be similar to Seurat's
 #'
 #' @param spe A SpatialExperiment object.
-#' @param n_neighbors,n_components,metric,min_dist See \link[uwot]{umap}
+#' @param n_neighbors,n_components,metric,min_dist,spread See \link[uwot]{umap}
 #' @param assay Name of assay for UMAP. Incompatible with dimred.
 #' @param dimred Name of the dimensionality reduction (e.g. PCA) for UMAP. Incompatible with assay
 #' @param n_dimred Integer scalar or vector specifying the dimensions to use if dimred is specified.
@@ -22,6 +22,7 @@ runUMAP <- function(spe,
                     n_components=2,
                     metric="cosine",
                     min_dist=0.3,
+                    spread=1,
                     assay=NULL,
                     dimred="PCA",
                     n_dimred=NULL,
@@ -46,6 +47,11 @@ runUMAP <- function(spe,
         mat <- SingleCellExperiment::reducedDim(spe,dimred)
         if (!is.null(n_dimred)) {
             if(length(n_dimred)==1L) {
+                if (n_dimred > ncol(mat)) {
+                    message("n_dimred (", n_dimred, ") exceeds available dimensions (",
+                            ncol(mat), "). Using all ", ncol(mat), ".")
+                    n_dimred <- ncol(mat)
+                }
                 n_dimred <- seq_len(n_dimred)
             }
             mat <- mat[,n_dimred,drop=FALSE]
@@ -57,6 +63,7 @@ runUMAP <- function(spe,
                       n_components = n_components,
                       metric=metric,
                       min_dist=min_dist,
+                      spread=spread,
                       ...)
     colnames(out) <- paste0("UMAP", seq_len(ncol(out)))
     

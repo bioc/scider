@@ -76,7 +76,7 @@ findNbrsSpatial <- function(spe,
                         "idw" = lapply(nbrs$weight, function(i) scale/i),
                         "exp" = lapply(nbrs$weight, function(i) exp(-i/scale)),
                         "binary" = lapply(lengths(nbrs$index), function(i) rep.int(1,i)),
-                        "raw" = nbrs$weight) 
+                        "none" = nbrs$weight)
   # standardization
   nbrs$weight <- switch(standardisation,
                         "row" = lapply(nbrs$weight, function(i) i/sum(i)),
@@ -86,6 +86,6 @@ findNbrsSpatial <- function(spe,
   if (is.null(nbrs_name)) {
     nbrs_name <- "spatial"
   }
-  spe@metadata$nbrs$cell[[nbrs_name]] <- nbrs
+  spe <- .storeNbrs(spe, nbrs, at = "cell", name = nbrs_name, type = "spatial")
   return(spe)
 }

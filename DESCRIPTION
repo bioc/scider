@@ -1,7 +1,7 @@
 Package: scider
 Type: Package
 Title: Spatial cell-type inter-correlation by density in R
-Version: 1.11.0
+Version: 1.11.1
 Authors@R: 
     c(person(given = "Mengbo",family = "Li", 
              role = c("aut"),
@@ -34,7 +34,7 @@ Description: scider is an user-friendly R package providing functions
     boundary detection analysis and differential density analysis.
 biocViews: Spatial, Transcriptomics
 License: GPL-3 + file LICENSE
-URL: https://github.com/ChenLaboratory/scider, https://chenlaboratory.github.io/scider/
+URL: https://github.com/ChenLaboratory/scider
 BugReports: https://github.com/ChenLaboratory/scider/issues
 Encoding: UTF-8
 LazyData: false
@@ -71,11 +71,13 @@ Imports:
     DropletUtils,
     arrow,
     RBioFormats,
-    Matrix
+    Matrix,
+    patchwork,
+    withr
 Suggests:
     edgeR,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Depends: 
-    R (>= 4.3)
+    R (>= 4.4.0)
 VignetteBuilder: knitr

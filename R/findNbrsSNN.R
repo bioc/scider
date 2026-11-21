@@ -4,11 +4,17 @@
 #' @param assay Name of assay for clustering. Incompatible with dimred.
 #' @param dimred Name of the dimensionality reduction (e.g. PCA) for clustering.
 #' Incompatible with assay
-#' @param n_dimred Integer scalar or vector specifying the dimensions to use if dimred is specified.
-#' @param k Integer scalar for number of nearest neighbors to find.
+#' @param n_dimred Integer scalar or vector specifying the dimensions to use if
+#' dimred is specified. Defaults to NULL, which uses all available dimensions of
+#' the reduced dim (e.g. all PCs produced by runPCA).
+#' @param k Integer scalar for number of nearest neighbors to find. Default to 20.
 #' @param BNPARAM \link[BiocNeighbors]{BiocNeighborParam} object specifying the nearest neighbor algorithm. Default is Annoy.
-#' @param type Type of weighting scheme for shared neighbors. Options are rank, number, and jaccard.
-#' type="rank" is defined in Xu and Su (2015).
+#' @param type Type of weighting scheme for shared neighbors. Options are jaccard
+#' (default), rank, and number. type="rank" is defined in Xu and Su (2015).
+#' @param prune Edges with SNN weight at or below this value are removed before
+#' clustering. Defaults to NULL, which applies a jaccard cutoff of 0.1 for "jaccard",
+#' converted to the equivalent shared-neighbour count (2(k+1)*0.1/1.1) for "number".
+#' type="rank" is not pruned by default. Set to 0 to disable.
 #' @param nbrs_name Name of the neighbour list to be stored in spe. Default to be 
 #' assay/dimred + "_snn".
 #' @param cpu_threads Number of cpu threads for parallel computation.
@@ -28,10 +34,11 @@
 findNbrsSNN <- function(spe,
                         assay = NULL,
                         dimred = "PCA",
-                        n_dimred = 10,
+                        n_dimred = NULL,
                         k = 20,
                         BNPARAM = BiocNeighbors::AnnoyParam(),
-                        type = c("rank", "number", "jaccard"),
+                        type = c("jaccard", "rank", "number"),
+                        prune = NULL,
                         nbrs_name = NULL,
                         cpu_threads = 6) {
   # Getting default data  
@@ -48,12 +55,16 @@ findNbrsSNN <- function(spe,
 
   if (!is.null(dimred)) {
     mat <- SingleCellExperiment::reducedDim(spe,dimred)
-    if (!is.null(n_dimred)) {
-      if(length(n_dimred)==1L) {
-        n_dimred <- seq_len(n_dimred)
+    if (is.null(n_dimred)) n_dimred <- ncol(mat)
+    if (length(n_dimred)==1L) {
+      if (n_dimred > ncol(mat)) {
+        message("n_dimred (", n_dimred, ") exceeds available dimensions (",
+                ncol(mat), "). Using all ", ncol(mat), ".")
+        n_dimred <- ncol(mat)
       }
-      mat <- mat[,n_dimred,drop=FALSE]
+      n_dimred <- seq_len(n_dimred)
     }
+    mat <- mat[,n_dimred,drop=FALSE]
   } else {
     mat <- Matrix::t(SummarizedExperiment::assay(spe,assay))
   }
@@ -63,7 +74,6 @@ findNbrsSNN <- function(spe,
     message(paste("k is larger than number of points. Setting k to",ncol(spe)-1))
     k = ncol(spe)-1
   }
-  print("Getting K-nearest neighbour")
   knn.args <- list(X=mat,
                      k=k,
                      num.threads=cpu_threads,
@@ -73,16 +83,36 @@ findNbrsSNN <- function(spe,
   knn <- do.call(BiocNeighbors::findKNN,knn.args)
   
   # SNN
-  print("Getting shared nearest neighbour")
   type <- match.arg(type)
   snn <- .Call("C_findSNN",t(knn$index-1),k,nrow(mat),type,cpu_threads)
   snn$index <- lapply(snn$index,"+",1L)
+
+  # Prune weak SNN edges. "rank" is not pruned by default. The "number" default
+  # is the shared-neighbour count equivalent to the jaccard cutoff.
+  if (is.null(prune)) {
+    j <- 0.1
+    prune <- switch(type,
+                    jaccard = j,
+                    number  = 2 * (k + 1) * j / (1 + j),
+                    rank    = 0)
+  }
+  if (prune > 0) {
+    keep <- lapply(snn$weight, function(w) w > prune)
+    snn$index  <- Map(function(idx, sel) idx[sel], snn$index,  keep)
+    snn$weight <- Map(function(w,   sel) w[sel],   snn$weight, keep)
+  }
+
+  # Record the coordinate space used, so downstream steps (e.g. the distance
+  # fallback in getClusters(unassigned="force")) can reconstruct it.
+  snn$dimred <- dimred
+  snn$assay  <- if (is.null(dimred)) assay else NULL
+  snn$dims   <- if (!is.null(dimred)) n_dimred else NULL
 
   if (is.null(nbrs_name)) {
     if(is.null(dimred)) nbrs_name <- paste0(assay,"_snn")
     else nbrs_name <- paste0(dimred,"_snn")
   }
-  spe@metadata$nbrs$cell[[nbrs_name]] <- snn
+  spe <- .storeNbrs(spe, snn, at = "cell", name = nbrs_name, type = "snn")
   return(spe)
 }
 

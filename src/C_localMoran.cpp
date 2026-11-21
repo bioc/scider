@@ -19,13 +19,14 @@ void pseudoP(int start,int end,uint64_t seed_start,
   // Figure out no. of valid nbrs (points w/ at least 1 nbrs).
   int n_sample = 0; 
   int *potential_nbrs = new int[n];
-  int seed_offset = 0;
+  uint64_t seed_offset = 0;
   for (int i=0;i<n;i++) {
-    if (p_n_nbrs[i]>0) {
+    if (cluster_vec[i]!=6) {
       potential_nbrs[n_sample]=i;
       n_sample++;
     }
-    seed_offset += (i<start)*p_n_nbrs[i];
+    // Skip if hhonly
+    seed_offset += (cluster_vec[i]!=5)*(i<start)*p_n_nbrs[i];
   }
   n_sample--; // Point cant be its own nbrs
   
@@ -75,6 +76,13 @@ void pseudoP(int start,int end,uint64_t seed_start,
   delete[] potential_nbrs;
 }
 
+// Local Moran calculation based on libgeoda's code
+// See https://github.com/GeoDaCenter/libgeoda
+// Some notable changes include:
+// + Added spatial weights.
+// + Output is reproducible even with different cpu_threads.
+// + Fix various permutation bugs.
+// + Fix rng & use better rng (pcg-rng instead of thomaswang)
 extern "C" {
   SEXP C_localMoran(SEXP nbrs,
                     SEXP n_nbrs,
@@ -111,7 +119,7 @@ extern "C" {
     bool hhonly = Rf_asLogical(hhonly_);
     
     // Shuffle so sequential seeds are different. Not strictly needed.
-    // Numbers taken from r-source/src/main/RNG.c
+    // Based on r-source/src/main/RNG.c
     for(int i = 0; i < 50; i++) p_seed = (69069 * p_seed + 1);
     
     // Standardize data

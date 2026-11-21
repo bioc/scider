@@ -17,6 +17,7 @@
 #' @param pt.shape Shape of points.
 #' @param ylab Label for the y-axis.
 #' @param xlab Label for the x-axis
+#' @return A ggplot object.
 #' @export
 #' @examples
 #'
@@ -72,7 +73,7 @@ plotViolin <- function(spe,
     dat$group <- ""
   }
   
-  # transform expression
+  # Transform expression
   if (is.character(type)) {
     type <- switch(match.arg(type),
                    raw = NULL,
