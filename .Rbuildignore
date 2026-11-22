@@ -1,0 +1,10 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^doc$
+^Meta$
+^\.github$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+# Mac system file
+.DS_Store
